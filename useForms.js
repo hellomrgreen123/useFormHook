@@ -1,5 +1,4 @@
 import { useCallback, useRef, useState } from "react";
-import { isEmpty } from "./utils";
 
 const useForm = ({ initialValues = {}, validate }) => {
   const initial = useRef(initialValues);
@@ -9,18 +8,26 @@ const useForm = ({ initialValues = {}, validate }) => {
 
   const handleChange = (e) => {
     const { type, name } = e.target;
-
     const getValue = () => {
       if (type === "checkbox") {
         return e.target.checked;
       } else if (type === "select-multiple") {
-        return Array.from(e.target.selectedOptions).map((o) => o.value);
+        return Array.from(e.target.selectedOptions).map(
+          (option) => option.value
+        );
+      } else if (type === "file") {
+        for (let i = 0; i < e.target.files.length; i++) {
+          e.target.files[i].url = URL.createObjectURL(e.target.files[i]);
+        }
+        return Array.from(e.target.files);
       }
       return e.target.value;
     };
 
     const value = getValue();
-    setValues((prevValues) => ({ ...prevValues, [name]: value }));
+    setValues((prevValues) => {
+      return { ...prevValues, [name]: value };
+    });
   };
 
   const handleBlur = (e) => {
@@ -37,8 +44,7 @@ const useForm = ({ initialValues = {}, validate }) => {
     }
   }, []);
 
-  const errors = validate ? validate(values) : {};
-  const valid = isEmpty(errors);
+  const errors = validate ? validate(values) : null;
 
   const handleSubmit = (onSubmit) => (e) => {
     setSubmitting(true);
@@ -46,7 +52,7 @@ const useForm = ({ initialValues = {}, validate }) => {
       e.preventDefault();
     }
 
-    if (valid) {
+    if (!errors) {
       Promise.resolve(onSubmit(values, e)).finally(() => {
         const valueKeys = Object.keys(values);
         valueKeys.forEach((key) => {
@@ -63,10 +69,6 @@ const useForm = ({ initialValues = {}, validate }) => {
     }
   };
 
-  const dirty = !!Object.keys(initial.current).find(
-    (key) => initial.current[key] !== values[key]
-  );
-
   return {
     values,
     setValues,
@@ -76,8 +78,6 @@ const useForm = ({ initialValues = {}, validate }) => {
     initialize,
     errors,
     submitting,
-    valid,
-    dirty,
     touched,
   };
 };
